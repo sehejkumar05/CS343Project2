@@ -128,7 +128,7 @@ class MultiAgentSearchAgent(Agent):
 
     Note: this is an abstract class: one that should not be instantiated.  It's
     only partially specified, and designed to be extended.  Agent (game.py)
-    is another abstract class.
+    is another abstract clasFs.
     """
 
     def __init__(self, evalFn = 'scoreEvaluationFunction', depth = '2'):
@@ -212,7 +212,73 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
         Returns the minimax action using self.depth and self.evaluationFunction
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        #get total number agent
+        numAgents = gameState.getNumAgents()
+        #need to return score if at termination state
+        def isTerminal(state, depth):
+            return depth == self.depth or state.isWin() or state.isLose()
+
+        #define the alphabeta recursive function
+        def alphabetarecursive(inputState, inputAgentIndex, inputDepth, inputAlpha, inputBeta):
+            #check terminality
+            if isTerminal(inputState, inputDepth):
+                return self.evaluationFunction(inputState)
+            #get actions
+            currActions = inputState.getLegalActions(inputAgentIndex)
+            if not currActions:
+                return self.evaluationFunction(inputState)
+            
+            #determine next agent
+            nextAgent = (inputAgentIndex + 1) % numAgents
+            #increase depth only when we cycle back to pacman
+            if nextAgent == 0:
+                nextDepth = inputDepth + 1
+            else:
+                nextDepth = inputDepth
+            
+            #start by checking pacman agent
+            if inputAgentIndex == 0:
+                bestVal = -float("inf")
+                for currAction in currActions:
+                    currSucc = inputState.generateSuccessor(inputAgentIndex, currAction)
+                    bestVal = max(bestVal, alphabetarecursive(currSucc, nextAgent, nextDepth,inputAlpha, inputBeta))
+                    inputAlpha = max(inputAlpha,bestVal)
+                    #prune if greater than beta
+                    if inputAlpha > inputBeta:
+                        break
+                return bestVal
+            #now check the ghosts
+            else:
+                bestVal = float("inf")
+                for currAction in currActions:
+                    currSucc = inputState.generateSuccessor(inputAgentIndex, currAction)
+                    bestVal = min(bestVal, alphabetarecursive(currSucc, nextAgent, nextDepth,inputAlpha, inputBeta))
+                    inputBeta = min(inputBeta,bestVal)
+                    #prune if greater than beta
+                    if inputBeta < inputAlpha:
+                        break
+                return bestVal
+
+        #main driver
+        currAlpha = -float("inf")   
+        currBeta = float("inf")   
+        bestAct = None
+        bestVal = -float("inf")
+        #loop through pacman actions
+        for currAction in gameState.getLegalActions(0):
+            #get successor
+            currSucc = gameState.generateSuccessor(0,currAction)
+            #compute minimax using alpha beta
+            currVal = alphabetarecursive(currSucc,1%numAgents,0,currAlpha,currBeta)
+            #update best action
+            if bestAct is None or currVal > bestVal:
+                bestVal = currVal
+                bestAct = currAction
+            
+            currAlpha = max(currAlpha,bestVal)
+        return bestAct
+
+
 
 class ExpectimaxAgent(MultiAgentSearchAgent):
     """
@@ -227,7 +293,63 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
         legal moves.
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        #get total number agent
+        numAgents = gameState.getNumAgents()
+        #need to return score if at termination state
+        def isTerminal(state, depth):
+            return depth == self.depth or state.isWin() or state.isLose()
+
+        #define the expectimax recursive function
+        def expectimaxrecursive(inputState, inputAgentIndex, inputDepth):
+            #check terminality
+            if isTerminal(inputState, inputDepth):
+                return self.evaluationFunction(inputState)
+            #get actions
+            currActions = inputState.getLegalActions(inputAgentIndex)
+            if not currActions:
+                return self.evaluationFunction(inputState)
+            
+            #determine next agent
+            nextAgent = (inputAgentIndex + 1) % numAgents
+            #increase depth only when we cycle back to pacman
+            if nextAgent == 0:
+                nextDepth = inputDepth + 1
+            else:
+                nextDepth = inputDepth
+            
+            #start by checking pacman agent
+            if inputAgentIndex == 0:
+                bestVal = -float("inf")
+                for currAction in currActions:
+                    currSucc = inputState.generateSuccessor(inputAgentIndex, currAction)
+                    currVal = expectimaxrecursive(currSucc,nextAgent,nextDepth)
+                    bestVal = max(bestVal,currVal)
+                return bestVal
+            #now check the ghosts
+            else:
+                totalVal = 0
+                #assume ghost chooses at random
+                prob = 1.0/len(currActions)
+                for currAction in currActions:
+                    currSucc = inputState.generateSuccessor(inputAgentIndex, currAction)
+                    currVal = expectimaxrecursive(currSucc,nextAgent,nextDepth)
+                    totalVal += prob*currVal
+                return totalVal
+
+        #main driver 
+        bestAct = None
+        bestVal = -float("inf")
+        #loop through pacman actions
+        for currAction in gameState.getLegalActions(0):
+            #get successor
+            currSucc = gameState.generateSuccessor(0,currAction)
+            #compute minimax using alpha beta
+            currVal = expectimaxrecursive(currSucc,1%numAgents,0)
+            #update best action
+            if bestAct is None or currVal > bestVal:
+                bestVal = currVal
+                bestAct = currAction
+        return bestAct
 
 def betterEvaluationFunction(currentGameState: GameState):
     """
