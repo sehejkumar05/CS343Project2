@@ -166,15 +166,19 @@ class MinimaxAgent(MultiAgentSearchAgent):
         """
         "*** YOUR CODE HERE ***"
         numAgents = gameState.getNumAgents()
+        #need to return score if at termination state
         def isterminal(state, depth):
             return depth == self.depth or state.isWin() or state.isLose()
+        # define minimax recursive function
         def minimax(state, agentIndex, depth):
             if isterminal(state, depth):
                 return self.evaluationFunction(state)
+            # get actions for current agent
             actions = state.getLegalActions(agentIndex)
             if not actions:
                 return self.evaluationFunction(state)
             nextAgent = (agentIndex + 1) % numAgents
+            # increase depth only when we cycle back to pacman
             if nextAgent == 0:
                 nextDepth = depth + 1
             else:
@@ -359,7 +363,54 @@ def betterEvaluationFunction(currentGameState: GameState):
     DESCRIPTION: <write something here so we know what you did>
     """
     "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+
+    if currentGameState.isWin():
+        return float("inf")
+    if currentGameState.isLose():
+        return -float("inf")
+    position = currentGameState.getPacmanPosition()
+    foodList = currentGameState.getFood().asList()
+    capsules = currentGameState.getCapsules()
+    ghostStates = currentGameState.getGhostStates()
+    score = currentGameState.getScore()
+
+    if foodList:
+        # using manhattan distance
+        minFoodDistance = min(manhattanDistance(position, food) for food in foodList)
+        score += 15.0 / (minFoodDistance + 1.0)
+        score -= 4.5 * len(foodList)
+
+    activeMin = float("inf")
+    # find the closest ghost and score based on distance
+    for ghost in ghostStates:
+        ghostPosition = ghost.getPosition()
+        distance = manhattanDistance(position, ghostPosition)
+        if ghost.scaredTimer > 0:
+            score += 30.0 / (distance + 1.0)
+        else:
+            activeMin = min(activeMin, distance)
+    # penalize score based on ghost proximity
+    if activeMin <= 1:
+        return -float("inf")
+    elif activeMin == 2:
+        score -= 1000
+    elif activeMin == 3:
+        score -= 300
+    elif activeMin == 4:
+        score -= 120
+    elif activeMin < float("inf"):
+        score -= 6.0 / activeMin
+
+    if capsules:
+        # using manhattan distance
+        minCapsuleDistance = min(manhattanDistance(position, capsule) for capsule in capsules)
+        score -= 25 * len(capsules)
+        if activeMin <= 5:
+            score += 60.0 / (minCapsuleDistance + 1.0)
+        else:
+            score += 10.0 / (minCapsuleDistance + 1.0) 
+
+    return score
 
 # Abbreviation
 better = betterEvaluationFunction
